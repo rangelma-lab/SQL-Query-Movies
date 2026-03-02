@@ -1,0 +1,112 @@
+--Vamos a seleccionar el nombre y apellido de los actores.
+--Simplemente se seleccionan por separado.
+SELECT first_name, last_name 
+FROM dbo.actor
+
+--2. Vamos a seleccionar el nombre completo del actor en una sola columna.
+--Se concatenan las frases con la instrucción '+'.
+SELECT first_name +' '+ last_name AS Nombre_completo
+FROM dbo.actor
+
+--3. Selecciona los actores que su nombre empieza con "D".
+--Para esta busqueda se usa la instrucción WHERE junto con LIKE, para encontrar palabras que empiecen 
+--con D.
+SELECT first_name +' '+ last_name AS Nombre_completo
+FROM dbo.actor
+WHERE first_name LIKE 'D%' 
+
+--4. ¿Tenemos algún actor con el mismo nombre?
+--Para esta busqueda se usa la función COUNT que ayudará a contar el número de veces que se registró 
+--el nombre completo de los actores, si algún nombre completo se registró más de 1 vez, significa que 
+--hay varios actores con el mismo nombre, o que hubo un registro doble.
+SELECT  first_name +' '+ last_name AS Nombre_completo, COUNT(*) AS veces
+FROM dbo.actor
+GROUP BY
+first_name +' '+ last_name
+HAVING COUNT(*)>1
+
+--5. ¿Cuál es el costo máximo de renta de una película?
+--Se usó la función MAX, que devuelve el valor máximo numérico de una columna,
+--para encontrar el valor máximo de renta de una película.
+--
+SELECT MAX(rental_rate)
+FROM dbo.film
+--6. ¿Cuáles son las peliculas que fueron rentadas con ese costo?
+--Se filtraron las películas que se rentaron a 4.99. Esto se hizo con la instrucción WHERE. 
+SELECT title 
+FROM dbo.film
+WHERE rental_rate=4.99
+
+--7. ¿Cuantás películas hay por el tipo de audencia (rating)?
+--Se contaron las películas por rating con la función COUNT aplicada a la columna rating de la tabla 
+--film.
+SELECT rating, COUNT(*) AS Numero_de_Peliculas
+FROM dbo.film
+Group By rating
+
+--8. Selecciona las películas que no tienen un rating R o NC-17
+--Se filtraron las películas discriminandolas por su rating mediante la instrucción WHERE
+SELECT title, rating 
+FROM dbo.film
+WHERE rating != 'R' and rating != 'NC-17'
+
+--9. ¿Cuantos clientes hay en cada tienda?
+--Se cuenta la frecuencia de clientes en cada tienda mediante COUNT 
+SELECT store_id AS Numero_tienda, COUNT(*) As Numero_clientes
+FROM dbo.customer
+Group by store_id
+
+--10. ¿Cuál es la película que mas veces se rento?
+--Primero se busca el 'length' con valor más alto, mediante la instrucción MAX. eSTE VALOR DE length
+--se toma como el mayor número de veces que se rentó una película.
+--Después se buscan los nombres de las películas que se rentaron este número de veces
+SELECT MAX(CAST(length AS INT)) AS Maxima_renta
+FROM dbo.film;
+SELECT title 
+FROM dbo.film
+WHERE length='185'
+
+--11. ¿Qué peliculas no se han rentado?
+--Ya que la variable 'length' se asoció al número de veces que se rentó una película, para saber que 
+--películas no se rentaron se buscan las películas con un length igual a cero.
+SELECT title 
+FROM dbo.film
+WHERE length='0'
+
+--12. ¿Qué clientes no han rentado ninguna película?
+--Se buscan a los clientes que no están en el registro de la tabla dbo.rental, esto mediante una 
+--subconsulta del tipo anti-join.
+SELECT  first_name+' '+last_name AS Clientes_sin_rentas FROM dbo.customer  
+WHERE customer_id NOT IN
+(SELECT customer_id
+FROM dbo.rental)
+
+--13. ¿Qué actores han actuado en más de 30 películas?
+--Se utilizan 2 tablas, actor y film actor y se cuenta el número de veces que aparece un mismo actor en 
+--diferentes películas, mediante COUNT.
+--Después se filtran los actores con un conteo mayor a 30, mediante la instrucción 
+--HAVING
+SELECT a.first_name+' '+a.last_name AS Actores, COUNT(f.film_id) AS Películas
+FROM dbo.film_actor f INNER JOIN dbo.actor a ON f.actor_id=a.actor_id
+Group By a.first_name,a.last_name
+HAVING COUNT(f.film_id)>30
+
+--14. Muestra las ventas totales por tienda
+--Se utilizan las tablas staff y payment y se saca la suma de la cantidad amount, pero para cada 
+--tienda(es decir para cada store_id)
+SELECT s.store_id, SUM(CAST(p.amount AS DECIMAL)) as venta_total
+FROM dbo.staff AS s INNER JOIN dbo.payment AS p ON s.staff_id=p.staff_id
+Group By s.store_id
+
+--15. Muestra los clientes que rentaron una pelicula más de una vez. 
+--Se utilizan 4 tablas rental, customer, invertory y film se unieron con INNER JOIN, y para contar se
+--utilizó COUNT sobre la variable inventory_id que tiene una relación de 1 a 1 con cada película así para 
+--cada cliente se mostró el inventory_id asociado a cada renta y si el inventory_id asociado a una película
+--aparecía más de una vez significa que este cliente rentó más de una vez esa película.
+SELECT c.first_name +' '+ c.last_name AS Nombre_completo, COUNT(r.inventory_id) AS Numero_renta,f.title 
+FROM dbo.rental AS r INNER JOIN dbo.customer AS c
+ON r.customer_id =c.customer_id INNER JOIN dbo.inventory AS i
+ON r.inventory_id = i.inventory_id INNER JOIN dbo.film AS f
+ON i.film_id=f.film_id 
+Group By c.first_name +' '+ c.last_name, f.title
+HAVING  COUNT(r.inventory_id)>2
